@@ -18,6 +18,8 @@ const EditorPage = () => {
   const location = useLocation();
   const { roomId } = useParams();
   const reactNavigator = useNavigate();
+  const [clients, setClients] = useState([]);
+
 
   useEffect(() => {
     const init = async () => {
@@ -36,15 +38,33 @@ const EditorPage = () => {
         roomId,
         username: location.state?.username,
       });
+
+      //Listening for joined event
+      socketRef.current.on(ACTIONS.JOINED, ({ clients, username, socketId }) => {
+        if( username !== location.state?.username) {
+          toast.success(`${username} joined the room`);
+          console.log(`${username} joined`);
+        }
+        setClients(clients);
+      });
+
+      // Listening for disconnecting
+      socketRef.current.on(ACTIONS.DISCONNECTED, ({socketId, username}) => {
+        toast.success(`${username} left the room.`);
+        setClients((prev) => {
+          return prev.filter((client) =>client.socketId !==socketId);
+        })
+      })
+
     };
     init();
+    return () => {
+      socketRef.current.disconnect();
+      socketRef.current.off(ACTIONS.JOINED);
+      socketRef.current.off(ACTIONS.DISCONNECTED);
+    }
   }, []);
 
-  const [clients, setClients] = useState([
-    { socketId: 1, username: 'Aditya S' },
-    { socketId: 2, username: 'Ayush S' },
-    { socketId: 3, username: 'XYZ S' },
-  ]);
 
   if (!location.state) {
     return <Navigate to="/" />;
